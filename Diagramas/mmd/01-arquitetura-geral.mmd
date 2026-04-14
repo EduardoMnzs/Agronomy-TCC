@@ -1,0 +1,49 @@
+flowchart TB
+    subgraph ING["CAMADA DE INGESTÃO (Offline)"]
+        direction LR
+        PDF["PDFs / Documentos"] --> EXT["Extração\nde Texto"]
+        EXT --> CHK["Chunking\nSemântico\n~500 tokens"]
+        CHK --> EMB["Embedding\nEngine\nmultilingual-e5"]
+        EMB --> VDB[("Vector\nDatabase\nChromaDB")]
+    end
+
+    subgraph INF["CAMADA DE INFERÊNCIA (Tempo Real)"]
+        direction LR
+        USR["Usuário"] --> GRD["Guard\nClassifier"]
+        GRD -->|"domínio ok"| ENT["Extração\nde Entidades\npH, cultura, região"]
+        ENT --> QEMB["Embedding\nda Query"]
+        QEMB --> RET["Busca Vetorial\nTop-K = 5"]
+        RET --> PROMPT["Montagem\ndo Prompt"]
+        PROMPT --> LLM["LLM Core\nLLaMA 3 / GPT-4o"]
+        LLM --> AVAL["Auto-\nAvaliação"]
+        AVAL --> FMT["Output\nFormatter\nPydantic"]
+        GRD -->|"fora do domínio"| REJ["Recusa\nEducada"]
+    end
+
+    subgraph OUT["SAÍDAS"]
+        direction LR
+        CHAT["Chat\nLinguagem Natural"]
+        JSON["JSON\nEstruturado"]
+    end
+
+    subgraph VAL["CAMADA DE VALIDAÇÃO & APRENDIZADO"]
+        direction LR
+        ENG["Engenheira\nAgrônoma"] -->|"Correto"| DS[("Dataset\nStore .jsonl")]
+        ENG -->|"Incorreto"| LOG["Log\nde Erros"]
+        DS -->|"N ≥ 200 pares"| FT["Fine-tuning\nPEFT + LoRA"]
+        FT --> LLM2["Modelo\nEspecializado v2"]
+        LLM2 -->|"A/B Test"| BENCH["Benchmark\nSet"]
+    end
+
+    ING --> INF
+    FMT --> CHAT
+    FMT --> JSON
+    CHAT --> ENG
+    JSON --> ENG
+    LLM2 -.->|"substitui\ngradualmente"| LLM
+
+    style ING fill:#1e3a5f,stroke:#4a9eff,color:#e0f0ff
+    style INF fill:#1a3a1a,stroke:#4aaa4a,color:#e0ffe0
+    style OUT fill:#3a2a1a,stroke:#ffaa44,color:#fff0e0
+    style VAL fill:#3a1a3a,stroke:#aa44ff,color:#f0e0ff
+    style REJ fill:#5a1a1a,stroke:#ff4444,color:#ffe0e0

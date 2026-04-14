@@ -1,0 +1,47 @@
+flowchart TD
+    Q(["Pergunta do Usuário\n'Qual pH ideal para soja no Cerrado?'"])
+
+    Q --> GRD{"Guard Classifier\nÉ sobre solo/agronomia?"}
+    GRD -->|"Não"| REJ(["Recusa Educada\n'Fora do escopo de análise de solo'"])
+    GRD -->|"Sim"| ENT
+
+    ENT["Extração de Entidades\n• pH, nutrientes (N, P, K)\n• Cultura alvo (soja, milho...)\n• Região / Bioma\n• Coordenadas geográficas"]
+
+    ENT --> QEMB["Embedding da Query\nmultilingual-e5-large\n(mesmo modelo da ingestão)"]
+
+    QEMB --> RET["Busca Vetorial Top-K\nChromaDB similarity search\nK = 5 chunks mais relevantes"]
+
+    RET --> SCORE{"Score de\nSimilaridade ≥ 0.6?"}
+    SCORE -->|"Não"| FALL(["Fallback\n'Não encontrei informação\nsuficiente nas fontes'\nflag: sem_cobertura_documental"])
+    SCORE -->|"Sim"| PROMPT
+
+    PROMPT["Montagem do Prompt\n[instrução de sistema]\n+ [5 chunks relevantes]\n+ [pergunta do usuário]"]
+
+    PROMPT --> LLM["LLM Core\nLLaMA 3.1 8B / GPT-4o\nGera resposta com base\nAPENAS nas fontes fornecidas"]
+
+    LLM --> SELFEVAL{"Auto-Avaliação\nRespondeu só\npelas fontes?"}
+    SELFEVAL -->|"Incerto"| FLAG["Flag:\nrequer_validacao: true"]
+    SELFEVAL -->|"Confiante"| FMT
+
+    FLAG --> FMT
+
+    FMT["Output Formatter\nPydantic v2 Schema\nValida todos os campos obrigatórios"]
+
+    FMT --> CHAT["Resposta em Chat\nLinguagem natural\ncom citação de fonte"]
+    FMT --> JSON["JSON Estruturado\nresposta + parametros_solo\n+ recomendacoes + qualidade\n+ fontes + flags + coordenadas"]
+
+    style Q fill:#1e3a5f,stroke:#4a9eff,color:#e0f0ff
+    style GRD fill:#3a2a1a,stroke:#ffaa44,color:#fff0e0
+    style REJ fill:#5a1a1a,stroke:#ff4444,color:#ffe0e0
+    style ENT fill:#1a2a3a,stroke:#5588aa,color:#cce0ff
+    style QEMB fill:#1a3a1a,stroke:#44aa44,color:#d0ffd0
+    style RET fill:#1a3a1a,stroke:#44aa44,color:#d0ffd0
+    style SCORE fill:#3a2a1a,stroke:#ffaa44,color:#fff0e0
+    style FALL fill:#3a1e1e,stroke:#ff6644,color:#ffe8e0
+    style PROMPT fill:#2a1a3a,stroke:#8855aa,color:#e0d0ff
+    style LLM fill:#1a3a2a,stroke:#44ffaa,color:#d0ffe8
+    style SELFEVAL fill:#3a2a1a,stroke:#ffaa44,color:#fff0e0
+    style FLAG fill:#3a2a1a,stroke:#ff8844,color:#ffe0cc
+    style FMT fill:#1a2a3a,stroke:#5588aa,color:#cce0ff
+    style CHAT fill:#3a2a1a,stroke:#ffcc44,color:#fff8e0
+    style JSON fill:#3a2a1a,stroke:#ffcc44,color:#fff8e0

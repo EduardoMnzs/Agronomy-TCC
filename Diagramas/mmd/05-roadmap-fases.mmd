@@ -1,0 +1,53 @@
+flowchart LR
+    subgraph F0["Fase 0 — Preparação"]
+        direction TB
+        P0A["Definir fontes\nde dados\ncom engenheira"]
+        P0B["Criar benchmark\nset 20-30 perguntas"]
+        P0C["Configurar\nambiente Python 3.11+"]
+        P0D["Escolher LLM\ne VectorDB"]
+        P0A --> P0B --> P0C --> P0D
+    end
+
+    subgraph F1["Fase 1 — MVP RAG"]
+        direction TB
+        P1A["Pipeline de\ningestão de PDFs"]
+        P1B["VectorDB\npopulado"]
+        P1C["Interface de\nchat (Streamlit)"]
+        P1D["Painel de\nvalidação\nda engenheira"]
+        P1A --> P1B --> P1C --> P1D
+    end
+
+    subgraph F2["Fase 2 — Avaliação"]
+        direction TB
+        P2A["Executar\nbenchmark set"]
+        P2B["Medir métricas\nAccuracy / Faithfulness\nCoverage / Latência"]
+        P2C["Ajustar chunking\ne estratégia de\ntratamento de erros"]
+        P2D["Guard Classifier\nsimples"]
+        P2A --> P2B --> P2C --> P2D
+    end
+
+    subgraph F3["Fase 3 — Fine-tuning"]
+        direction TB
+        P3A["N ≥ 200 pares\nvalidados"]
+        P3B["Fine-tuning\nPEFT + LoRA\nUnsloth / GPU"]
+        P3C["A/B Test vs\nmodelo anterior"]
+        P3D["Modelo\nespecializado\nem solo v2"]
+        P3A --> P3B --> P3C --> P3D
+    end
+
+    subgraph F4["Fase 4 — Expansão"]
+        direction TB
+        P4A["Conector CSV\nLaudos de solo"]
+        P4B["Conector\nShapefiles\nGeoPandas"]
+        P4C["API REST\nFastAPI"]
+        P4D["Dashboard GIS\n+ Mapas"]
+        P4A --> P4B --> P4C --> P4D
+    end
+
+    F0 --> F1 --> F2 --> F3 --> F4
+
+    style F0 fill:#1e2a4a,stroke:#4466cc,color:#d0e0ff
+    style F1 fill:#1a3a1a,stroke:#44aa44,color:#d0ffd0
+    style F2 fill:#3a2a1a,stroke:#aaaa22,color:#ffffd0
+    style F3 fill:#2a1a3a,stroke:#8844aa,color:#e8d0ff
+    style F4 fill:#1a3a3a,stroke:#22aaaa,color:#d0ffff

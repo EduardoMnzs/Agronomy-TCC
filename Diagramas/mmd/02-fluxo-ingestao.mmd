@@ -1,0 +1,29 @@
+flowchart TD
+    START(["Documento PDF\nFonte: EMBRAPA / Literatura Técnica"])
+
+    START --> EXTRACT["Extração de Texto\nPyMuPDF / pdfplumber\n• Remove cabeçalhos e rodapés\n• Normaliza encoding UTF-8\n• Detecta tabelas e figuras"]
+
+    EXTRACT --> CLEAN["Limpeza e Pré-processamento\n• Remove caracteres especiais\n• Normaliza espaços e quebras\n• Identifica seções e títulos"]
+
+    CLEAN --> CHUNK["Chunking Semântico\nLangChain RecursiveCharacterTextSplitter\n• Tamanho: ~500 tokens\n• Overlap: ~50 tokens\n• Respeita parágrafos e frases"]
+
+    CHUNK --> META["Enriquecimento de Metadados\n• fonte: nome do documento\n• pagina: número da página\n• secao: título da seção\n• tema: solo / calagem / nutrição\n• data_publicacao: ano EMBRAPA\n• bioma: Cerrado / Amazônia / etc"]
+
+    META --> EMBED["Geração de Embeddings\nmultilingual-e5-large\n• Vetor de 1024 dimensões\n• Suporte nativo a PT-BR\n• Mesmo modelo usado na query"]
+
+    EMBED --> STORE[("Armazenamento no VectorDB\nChromaDB\n• Vetor + metadados indexados\n• Busca por cosseno de similaridade\n• Filtros por bioma, cultura, tema")]
+
+    STORE --> READY(["Base de Conhecimento\nPronta para Consulta"])
+
+    START --> MULTI["Múltiplos PDFs\nProcessamento em lote\n(batch.mjs --workers 4)"]
+    MULTI --> EXTRACT
+
+    style START fill:#1e3a5f,stroke:#4a9eff,color:#e0f0ff
+    style EXTRACT fill:#1a2a3a,stroke:#5588aa,color:#cce0ff
+    style CLEAN fill:#1a2a3a,stroke:#5588aa,color:#cce0ff
+    style CHUNK fill:#1a2a3a,stroke:#5588aa,color:#cce0ff
+    style META fill:#2a1a3a,stroke:#8855aa,color:#e0d0ff
+    style EMBED fill:#1a3a1a,stroke:#44aa44,color:#d0ffd0
+    style STORE fill:#3a2a1a,stroke:#aa7722,color:#fff0cc
+    style READY fill:#1a3a1a,stroke:#44ff44,color:#ccffcc
+    style MULTI fill:#1e3a5f,stroke:#4a9eff,color:#e0f0ff

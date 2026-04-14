@@ -1,0 +1,50 @@
+sequenceDiagram
+    actor U as Usuário
+    participant S as Sistema RAG
+    participant E as Engenheira
+    participant DS as Dataset Store
+    participant FT as Fine-tuning
+
+    Note over U,FT: CICLO 1 — MVP RAG (Fase 1)
+
+    U->>S: Pergunta sobre solo
+    S->>S: Retrieval + LLM + Auto-avaliação
+    S-->>U: Resposta em Chat + JSON
+    S->>E: Envia para validação
+
+    alt Resposta Correta
+        E->>DS: Salva par Q&A (pergunta + resposta validada)
+        DS-->>E: Confirmado
+    else Resposta Incorreta
+        E->>DS: Registra erro + anotação do tipo
+        E->>S: Feedback sobre falha
+    else Parcialmente Correto
+        E->>DS: Salva com nota de ajuste
+        E->>S: Indica campo incorreto
+    end
+
+    Note over U,FT: CICLO N — Quando N ≥ 200 pares validados (Fase 3)
+
+    DS->>FT: Exporta dataset .jsonl com pares validados
+    FT->>FT: Fine-tuning com PEFT + LoRA sobre LLaMA base
+    FT-->>S: Novo modelo especializado (v2)
+
+    Note over S,E: A/B TEST — Benchmark Set Fixo
+
+    E->>S: Executa 30 perguntas do benchmark set
+    S-->>E: Respostas modelo v1 (RAG puro)
+    S-->>E: Respostas modelo v2 (RAG + Fine-tuning)
+    E->>E: Compara métricas:\nAccuracy / Faithfulness / Coverage
+    
+    alt v2 superior ao v1
+        E->>S: Promove modelo v2 para produção
+    else v2 inferior
+        E->>FT: Solicita revisão do dataset
+    end
+
+    Note over U,FT: CICLO CONTÍNUO — Melhoria Incremental
+
+    U->>S: Nova pergunta
+    S->>S: Usa modelo v2 + RAG como contexto
+    S-->>U: Resposta aprimorada
+    S->>E: Validação contínua
