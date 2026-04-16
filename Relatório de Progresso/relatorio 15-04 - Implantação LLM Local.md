@@ -224,6 +224,12 @@ O serviço `llama.cpp` está operacional no servidor da faculdade com:
 
 O modelo foi instalado com sucesso, dentro do volume nomeado `llama_models`. Após a instalação, o container foi destruído.
 
+#### Acesso visual ao modelo
+
+![llama model access](../assets/images/llama-model-access-2026-04-15%20215519.png)
+
+Serviço rodando com sucesso, com API OpenAI-compatible disponível em `llama.labs.unimar.br`.
+
 #### llama CPU Usage:
 ![llama CPU Usage](../assets/images/llama-cpu-status-2026-04-15%20213711.png)
 
