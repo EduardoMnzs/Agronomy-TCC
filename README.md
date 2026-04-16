@@ -1,6 +1,6 @@
-# Sistema de IA para Análise de Solo
+# Sistema de IA para Análise de Prescrições Agronômicas
 
-> TCC — Assistente Inteligente para Análise de Solo a partir de Documentos Técnicos
+> TCC — Assistente Inteligente para Análise de Prescrições Agronômicas a partir de Documentos Técnicos
 
 **Autor:** Eduardo Menezes  
 **Data de início:** Abril de 2026  
@@ -10,7 +10,7 @@
 
 ## Sobre o Projeto
 
-Este projeto desenvolve um **sistema de inteligência artificial** capaz de responder perguntas técnicas sobre análise de solo, recomendações agronômicas e manejo de fertilidade, com base em documentos técnicos (PDFs de fonte como a EMBRAPA) e dados de campo (planilhas, shapefiles, laudos).
+Este projeto desenvolve um **sistema de inteligência artificial** capaz de responder perguntas técnicas sobre análise de prescrições agronômicas, com base em documentos técnicos (PDFs de fonte como a EMBRAPA) e dados de campo (planilhas, shapefiles, laudos).
 
 A ideia central é transformar um vasto acervo de literatura técnica dispersa em um **assistente conversacional especializado**, auditável e em constante melhora — validado por uma engenheira agrônoma especialista.
 
@@ -78,7 +78,7 @@ TCC/
 │   └── Agro Lagoa da Prata/
 │       ├── 2024/                          ← Análises e prescrições 2024
 │       └── 2025/                          ← Análises e prescrições 2025
-│           ├── ANALISE/                   ← Shapefile de análise de solo
+│           ├── ANALISE/                   ← Shapefile de análise de prescrições agronômicas
 │           ├── CONTORNO/                  ← Shapefile de contorno da área
 │           ├── FERTILIZANTES E CORRETIVOS/
 │           └── MAPAS_DOSE/ e MAPAS_FERTILIDADE/
@@ -200,7 +200,7 @@ O sistema retorna respostas em dois formatos simultâneos:
 
 A pasta `Prescrição/` contém dados reais de campo da **fazenda Agro Lagoa da Prata**:
 
-- Shapefiles de análise de solo (`ANALISE/*.shp`)
+- Shapefiles de análise de prescrições agronômicas (`ANALISE/*.shp`)
 - Shapefiles de contorno de área (`CONTORNO/*.shp`)
 - Mapas de fertilidade (Ca, Mg, K, P, CTC, V%)
 - Mapas de prescrição de dose de fertilizantes e corretivos
@@ -219,4 +219,4 @@ Esses dados serão utilizados como **base de validação** e **caso de uso real*
 
 ---
 
-_TCC — Sistema de IA para Análise de Solo | Iniciado em Abril de 2026_
+_TCC — Sistema de IA para Análise de Prescrições Agronômicas | Iniciado em Abril de 2026_

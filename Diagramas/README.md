@@ -1,4 +1,4 @@
-# Diagramas — Sistema de IA para Análise de Solo
+# Diagramas — Sistema de IA para Análise de Prescrições Agronômicas
 **TCC | Atualizado em:** 14 de Abril de 2026
 
 ---

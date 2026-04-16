@@ -268,7 +268,7 @@ $$NC\,(t/ha) = \frac{(V_2 - V_1) \times CTC}{PRNT \times 10}$$
 
 ## 11. VALIDADE E CONDIÇÕES DA RECEITA
 
-> Esta receita agronômica é válida por **12 (doze) meses** a partir da data de emissão (**09/04/2026**), ou até que nova análise de solo seja realizada, o que ocorrer primeiro.
+> Esta receita agronômica é válida por **12 (doze) meses** a partir da data de emissão (**09/04/2026**), ou até que nova análise de prescrição seja realizada, o que ocorrer primeiro.
 >
 > A receita foi elaborada com base em dados geoespaciais processados pelo script `prescricao_fertilizantes.py` (Python/GeoPandas) e deve ser **revisada, validada e assinada por Engenheiro Agrônomo habilitado** antes de ser colocada em prática.
 >
@@ -295,7 +295,7 @@ CREA-MG / VISTO: _________________    Data: _____________________
 | Arquivo / Pasta | Conteúdo |
 |---|---|
 | `prescricao_fertilizantes.py` | Script de prescrição — geração de mapas e CSV |
-| `mapa_fertilidade.py` | Script de fertilidade — mapas de análise de solo |
+| `mapa_fertilidade.py` | Script de fertilidade — mapas de análise de prescrições agronômicas |
 | `resumo_prescricao.csv` | Tabela de resumo por insumo (sep. `;`, dec. `,`) |
 | `mapa_prescricao_*.png` | Mapas de prescrição — gradiente contínuo (1 por insumo) |
 | `mapa_prescricao_classes_*.png` | Mapas de prescrição — por classes de dose (1 por insumo) |

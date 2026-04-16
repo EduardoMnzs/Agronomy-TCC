@@ -1,6 +1,6 @@
-# Relatório de Planejamento Inicial — Sistema de IA para Análise de Solo
+# Relatório de Planejamento Inicial — Sistema de IA para Análise de Prescrições Agronômicas
 **Data:** 14 de Abril de 2026  
-**Projeto:** TCC — Assistente Inteligente para Análise de Solo
+**Projeto:** TCC — Assistente Inteligente para Análise de Prescrições Agronômicas
 **Versão:** 1.0  
 **Status:** Planejamento
 
@@ -10,8 +10,8 @@
 
 Desenvolver um sistema de Inteligência Artificial capaz de:
 
-1. **Ingerir e compreender** documentos técnicos da EMBRAPA (exemplo) (PDFs, boletins, manuais de solo)
-2. **Responder perguntas** em linguagem natural sobre análise de solo, recomendações agronômicas, calagem, adubação, culturas e biomas
+1. **Ingerir e compreender** documentos técnicos da EMBRAPA (exemplo) (PDFs, boletins, manuais de prescrições agronômicas)
+2. **Responder perguntas** em linguagem natural sobre análise de prescrições agronômicas, recomendações agronômicas, calagem, adubação, culturas e biomas
 3. **Analisar arquivos de dados** enviados pelo usuário (planilhas, CSVs, shapefiles) e gerar diagnósticos estruturados
 4. **Evoluir continuamente** com base na validação de uma engenheira agrônoma especialista
 5. **Exportar respostas** em dois formatos: chat conversacional e JSON estruturado (para integração com sistemas externos, ou evolução do projeto)
@@ -451,7 +451,7 @@ Um conjunto fixo de perguntas com **respostas esperadas** usadas para medir evol
 - [ ] Integrar modelo fine-tuned como LLM Core (mantendo RAG para contexto)
 
 ### Fase 4 — Expansão de Fontes (Futuro)
-- [ ] Conector para CSVs de laudos de análise de solo
+- [ ] Conector para CSVs de laudos de análise de prescrições agronômicas
 - [ ] Conector para Shapefiles (GeoPandas)
 - [ ] Conector para banco de dados PostgreSQL/PostGIS
 - [ ] API REST (FastAPI) para integração com sistemas externos
@@ -490,5 +490,4 @@ Um conjunto fixo de perguntas com **respostas esperadas** usadas para medir evol
 
 ---
 
-*Documento gerado em 14/04/2026 — TCC Análise de Solo com IA*
-*Próxima revisão: após definição de infraestrutura e fontes de dados pela engenheira*
+*Documento gerado em 14/04/2026 — TCC Análise de Prescrições Agronômicas com IA*

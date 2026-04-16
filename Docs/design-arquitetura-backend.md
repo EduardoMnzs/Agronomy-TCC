@@ -1,11 +1,13 @@
-# Design: Arquitetura Backend — Sistema de IA para Análise de Solo
-Date: 2026-04-15
+# Design: Arquitetura Backend — Sistema de IA para Prescrições Agronômicas
+**Data:** 15/04/2026
+**Versão:** 1.0  
+**Status:** Planejamento
 
 ---
 
 ## Sumário
 
-Sistema RAG em Python/FastAPI seguindo Clean Architecture, com BGE-M3 como modelo de embedding, Qdrant como VectorDB de produção e LangGraph para orquestração de agentes. As cinco decisões críticas foram validadas via sessão de brainstorming e estão documentadas abaixo com seus trade-offs.
+Sistema RAG em Python/FastAPI seguindo Clean Architecture, com BGE-M3 como modelo de embedding, Qdrant como VectorDB de produção e LangGraph para orquestração de agentes. As cinco decisões críticas foram pensadas via sessão de brainstorming e estão documentadas abaixo com seus trade-offs.
 
 ---
 
@@ -15,11 +17,11 @@ Sistema RAG em Python/FastAPI seguindo Clean Architecture, com BGE-M3 como model
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│           API Layer  (FastAPI routers)               │
+│           API Layer  (FastAPI routers)              │
 ├─────────────────────────────────────────────────────┤
-│       Application Services  (casos de uso)           │
+│       Application Services  (casos de uso)          │
 ├─────────────────────────────────────────────────────┤
-│          Domain Layer  (RAG, agentes, schemas)       │
+│          Domain Layer  (RAG, agentes, schemas)      │
 ├─────────────────────────────────────────────────────┤
 │     Infrastructure  (LLM, VectorDB, embeddings)     │
 └─────────────────────────────────────────────────────┘
@@ -42,7 +44,7 @@ Sistema RAG em Python/FastAPI seguindo Clean Architecture, com BGE-M3 como model
 ## Componentes
 
 ```
-soil_ai/
+agronomy_assistant/
 ├── main.py                        # FastAPI lifespan + app init
 ├── config/
 │   ├── settings.py                # Pydantic Settings (.env)
@@ -54,13 +56,13 @@ soil_ai/
 │   ├── chat.py                    # POST /v1/chat (SSE streaming)
 │   ├── ingest.py                  # POST /v1/ingest (async Celery)
 │   ├── validate.py                # Painel da engenheira
-│   └── dependencies.py           # FastAPI Depends() — DI
+│   └── dependencies.py            # FastAPI Depends() — DI
 ├── core/
 │   ├── rag/
 │   │   ├── pipeline.py            # Orquestrador do fluxo RAG
 │   │   ├── retriever.py           # Hybrid retrieval (dense + sparse)
 │   │   ├── reranker.py            # CRAG evaluator
-│   │   └── generator.py          # LLM + prompt rendering
+│   │   └── generator.py           # LLM + prompt rendering
 │   ├── agents/                    # Fase 3: LangGraph
 │   │   ├── router.py
 │   │   ├── document_agent.py
@@ -189,12 +191,12 @@ O que é rastreado por query:
 {
   "query_id": "uuid",
   "query_original": "...",
-  "query_rewritten": "...",       # após Conversational RAG
+  "query_rewritten": "...",      # após Conversational RAG
   "chunks_retrieved": [
     {"id": "chunk_042", "score": 0.87, "fonte": "...", "pagina": 18},
   ],
   "crag_decisions": {"chunk_042": "PASS", "chunk_015": "REJECT"},
-  "llm_used": "llama3.1:8b",     # ou "gpt-4o-fallback"
+  "llm_used": "llama-8b-solo-q4.gguf",     # ou "gpt-4o-fallback"
   "latencia_retrieval_ms": 124,
   "latencia_llm_ms": 1840,
   "flag_requer_validacao": false
@@ -248,13 +250,23 @@ services:
               # ─────────────────────────────────
               # Total estimado:      ~7GB  RAM
 
-  # llama-cpu config:
-  # image: ghcr.io/ggerganov/llama.cpp:server
-  # --model llama-8b-solo-q4.gguf
-  # --threads 48   (dos 56 cores disponíveis)
+  # llama-cpu config (valores confirmados em produção 15/04):
+  # image: ghcr.io/ggml-org/llama.cpp:server
+  # --model /models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+  # --threads 24
   # --ctx-size 4096
-  # Latência estimada: ~8-15s por resposta (aceitável)
+  # Latência estimada: ~10-20 tokens/s (~8-15s por resposta)
+  # URL da API: llama.labs.unimar.br (via Caddy proxy reverso)
+  # Volume: llama_models (nomeado — nunca bind mount relativo no Swarm)
 ```
+
+> **Padrões estabelecidos em produção (15/04):**
+> - Sempre usar **volumes nomeados** no Portainer Swarm (bind mounts relativos falham)
+> - **Padrão Entregador (Alpine)** para injetar arquivos grandes em volumes Docker
+> - Registry correto: `ghcr.io/ggml-org/llama.cpp:server` (projeto migrou de `ggerganov`)
+> - **24 threads** máximo para respeitar limites NUMA e não causar starvation
+> - NUMA: Non-Uniform Memory Access, uma arquitetura de memória distribuída que permite que diferentes processadores acessem diferentes partes da memória em velocidades diferentes. No servidor da faculdade, temos 48 cores disponíveis, mas apenas 24 podem ser usados para o llama.cpp.
+> - Starvation: é uma situação em que um processo não consegue obter os recursos de que precisa para ser executado, como tempo de CPU, memória ou acesso a dispositivos de E/S.
 
 ### Pipeline de Fine-Tuning (zero custo)
 
@@ -268,7 +280,7 @@ Kaggle Notebook (GPU T4/P100 16GB — grátis 30h/semana):
   6. Upload para o servidor da faculdade
 
 Servidor (pós fine-tuning):
-  7. llama-cpu serve o modelo especializado em solo
+  7. llama-cpu serve o modelo especializado em prescrições agronômicas
 ```
 
 ---
@@ -295,4 +307,4 @@ Servidor (pós fine-tuning):
 
 ---
 
-*Design validado em 15/04/2026 via sessão de brainstorming — Sistema de IA para Análise de Solo*
+*Design pensado em 15/04/2026 via sessão de brainstorming — Sistema de IA para Análise de Prescrições Agronômicas*

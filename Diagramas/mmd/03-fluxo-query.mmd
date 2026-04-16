@@ -2,7 +2,7 @@ flowchart TD
     Q(["Pergunta do Usuário\n'Qual pH ideal para soja no Cerrado?'"])
 
     Q --> GRD{"Guard Classifier\nÉ sobre solo/agronomia?"}
-    GRD -->|"Não"| REJ(["Recusa Educada\n'Fora do escopo de análise de solo'"])
+    GRD -->|"Não"| REJ(["Recusa Educada\n'Fora do escopo de análise de prescrições agronômicas'"])
     GRD -->|"Sim"| ENT
 
     ENT["Extração de Entidades\n• pH, nutrientes (N, P, K)\n• Cultura alvo (soja, milho...)\n• Região / Bioma\n• Coordenadas geográficas"]

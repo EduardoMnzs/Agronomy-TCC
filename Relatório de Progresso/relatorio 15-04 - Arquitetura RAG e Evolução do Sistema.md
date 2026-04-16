@@ -1,8 +1,9 @@
-# Relatório de Progresso — 15 de Abril de 2026
+# Relatório de Progresso — Arquitetura RAG e Evolução do Sistema
 
-**Projeto:** Sistema de IA para Análise de Solo  
-**Autor:** Eduardo Menezes  
-**Sessão:** Definição de Arquitetura RAG e Evolução do Sistema
+**Data:** 15 de Abril de 2026  
+**Projeto:** TCC — Assistente Inteligente para Análise de Prescrições Agronômicas
+**Versão:** 1.0  
+**Status:** Planejamento
 
 ---
 
@@ -36,12 +37,12 @@ O autor propõe o conceito de **"Lazy Retrieval"**: busca simples por palavras-c
 
 | Limitação do contexto longo puro  | Impacto direto no projeto                                                                                                                                                                           |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Limite de tokens insuficiente** | Futuramente haverá: PDFs técnicos + Shapefiles (Agro Lagoa da Prata já existe) + dados climáticos + histórico de safras + especificações de bicos/drones. Volume total excede qualquer janela atual |
+| **Limite de tokens insuficiente** | Futuramente haverá: PDFs técnicos + Shapefiles + dados climáticos + histórico de safras + especificações de bicos/drones. Volume total excede qualquer janela atual |
 | **Custo proibitivo por query**    | Enviar 1M tokens por consulta custa entre $1–$15 por query (Gemini/GPT) — inviável em produção                                                                                                      |
 | **Dados não-textuais**            | Shapefiles, CSVs de sensores, dados de drone **não são texto** e não podem ser simplesmente inseridos no contexto                                                                                   |
 | **Dados temporais/estruturados**  | Histórico climático e de produtividade por safra exigem SQL e raciocínio temporal, não busca semântica                                                                                              |
 
-### 2.3 O que o artigo oferece de valor — Insight para o MVP
+### 2.3 O que o artigo oferece de valor
 
 O argumento tem validade **para a Fase 1** (MVP só com PDFs):
 
@@ -140,7 +141,7 @@ A arquitetura alvo do sistema (Fase 3+) é:
         ▼                 ▼                  ▼
   [Simples/saudação]  [Factual]      [Complexa/multi-fonte]
   Resposta direta     Standard RAG    Agentic RAG
-                           │                │
+                          │                  │
                       Fusion RAG    ┌────────┴────────────┐
                     (variantes)     │                     │
                           │    Agente PDFs        Agente Dados
@@ -155,7 +156,7 @@ A arquitetura alvo do sistema (Fase 3+) é:
 
 ---
 
-## 5. Por que o CRAG é Obrigatório — A Regra de Ouro
+## 5. Por que o CRAG é Obrigatório?
 
 O Corrective RAG é o componente central de **confiabilidade** do sistema. Ele implementa diretamente a principal regra de negócio estabelecida na sessão anterior:
 
@@ -195,17 +196,17 @@ O **DINOv2 (Meta)** é um Vision Transformer para embedding de **imagens**, não
 
 | Modelo | Dimensões | Suporte PT-BR | Custo | Execução | Observação |
 |---|---|---|---|---|---|
-| **BGE-M3** (BAAI) | 1024 | Excelente | Grátis | Local | 🏆 Melhor open-source atual — suporta dense + sparse + multi-vector |
+| **BGE-M3** (BAAI) | 1024 | Excelente | Grátis | Local | Melhor open-source atual — suporta dense + sparse + multi-vector |
 | **multilingual-e5-large-instruct** | 1024 | Excelente | Grátis | Local | Upgrade do modelo originalmente planejado |
 | **multilingual-e5-large** | 1024 | Excelente | Grátis | Local | Planejado desde sessão 1; sólido e bem documentado |
 | **Titan Embeddings G1** (AWS) | 1536 | Bom | Pago (API) | AWS Bedrock | Preso ao ecossistema AWS; inviável para TCC local |
 | **text-embedding-3-large** (OpenAI) | 3072 | Excelente | Pago (API) | API | Máxima qualidade, mas custo por token |
 | **Cohere embed-multilingual-v3** | 1024 | Excelente | Pago (API) | API | Alternativa comercial sólida |
-| **DINOv2** (Meta) | — | — | Grátis | Local | ❌ Modelo de imagem — fora do escopo de texto |
+| **DINOv2** (Meta) | — | — | Grátis | Local | Modelo de imagem — fora do escopo de texto |
 
 ### 6.3 Por que BGE-M3 supera multilingual-e5-large para este projeto
 
-Documentos técnicos da EMBRAPA contêm terminologia muito específica (valores de pH, nomes de nutrientes, siglas agronômicas). O BGE-M3 resolve isso com recuperação em três modos simultâneos:
+Documentos técnicos da EMBRAPA por exemplo, contêm terminologia muito específica (valores de pH, nomes de nutrientes, siglas agronômicas). O BGE-M3 resolve isso com recuperação em três modos simultâneos:
 
 ```
 multilingual-e5-large:
@@ -233,12 +234,6 @@ BGE-M3:
 
 ---
 
-## 6.5 Perguntas em Aberto para Próximas Sessões
-
-- [ ] Questões adicionais pendentes desta sessão — em andamento
-
----
-
 ## 7. Decisão sobre Banco de Dados Vetorial (VectorDB)
 
 ### 7.1 Critério central: compatibilidade com BGE-M3
@@ -258,13 +253,13 @@ O VectorDB precisa suportar **sparse vectors** e **named vectors** (múltiplos v
 
 | VectorDB | Sparse Vectors | Named Vectors | Escalabilidade | Execução | Ideal para |
 |---|---|---|---|---|---|
-| **ChromaDB** | ❌ Não nativo | ❌ Não | ⚠️ Até ~500k docs | Local (SQLite) | Prototipagem rápida / MVP |
-| **pgvector** | ⚠️ Limitado | ❌ Não | ⚠️ Até ~1M com HNSW | Local/Servidor Postgres | Infra já usa Postgres; dados estruturados + vetor |
-| **Qdrant** | ✅ Nativo completo | ✅ Sim | ✅ Horizontal / bilhões | Docker local ou Qdrant Cloud | Produção com hybrid retrieval |
-| **Weaviate** | ✅ Sim (BM25) | ✅ Sim | ✅ Bom | Docker / Cloud | Alternativa ao Qdrant; mais complexo de operar |
-| **LanceDB** | ⚠️ Parcial | ✅ Sim | ✅ Serverless | Local / S3 | Integração nativa com Pandas/GeoPandas (Fase 3+) |
-| **Milvus / Zilliz** | ✅ Sim | ✅ Sim | ✅✅ Massivo | Docker cluster | Escala de bilhões — overkill para o TCC |
-| **FAISS** | ❌ | ❌ | ✅ | Local (biblioteca) | Benchmarks / pesquisa; sem persistência |
+| **ChromaDB** | Não nativo | Não | Até ~500k docs | Local (SQLite) | Prototipagem rápida / MVP |
+| **pgvector** | Limitado | Não | Até ~1M com HNSW | Local/Servidor Postgres | Infra já usa Postgres; dados estruturados + vetor |
+| **Qdrant** | Nativo completo | Sim | Horizontal / bilhões | Docker local ou Qdrant Cloud | Produção com hybrid retrieval |
+| **Weaviate** | Sim (BM25) | Sim | Bom | Docker / Cloud | Alternativa ao Qdrant; mais complexo de operar |
+| **LanceDB** | Parcial | Sim | Serverless | Local / S3 | Integração nativa com Pandas/GeoPandas (Fase 3+) |
+| **Milvus / Zilliz** | Sim | Sim | Massivo | Docker cluster | Escala de bilhões — overkill para o TCC |
+| **FAISS** | Não | Não | Sem persistência | Local (biblioteca) | Benchmarks / pesquisa; sem persistência |
 
 ### 7.3 Análise das Opções Sugeridas
 
@@ -286,7 +281,7 @@ O VectorDB precisa suportar **sparse vectors** e **named vectors** (múltiplos v
 # Qdrant permite armazenar os 3 vetores do BGE-M3 por chunk:
 {
     "vectors": {
-        "dense":  [0.12, 0.45, ...],          # BGE-M3 dense
+        "dense":  [0.12, 0.45, ...],           # BGE-M3 dense
         "sparse": {"indices": [...],
                    "values":  [...]}           # BGE-M3 sparse
     },
@@ -338,9 +333,9 @@ Com base nas decisões desta sessão, o roadmap completo é atualizado com embed
 
 | Fase | Arquitetura RAG | Embedding | VectorDB | Dados cobertos |
 |---|---|---|---|---|
-| **Fase 1** | Standard RAG + Conversational | BGE-M3 ou BM25 | ChromaDB | PDFs EMBRAPA |
+| **Fase 1** | Standard RAG + Conversational | BGE-M3 ou BM25 | ChromaDB | PDFs Agronômicos |
 | **Fase 2** | + Fusion RAG + CRAG | BGE-M3 (dense+sparse) | Qdrant | Mesmos PDFs, mais qualidade |
-| **Fase 3** | Agentic RAG multi-agente | BGE-M3 + DINOv2 (imagens) | Qdrant + pgvector | PDFs + CSV + Shapefile + Clima + Drone |
+| **Fase 3** | Agentic RAG multi-agente | BGE-M3 + DINOv2 (imagens) | Qdrant + pgvector | PDFs + CSV + Shapefile + Clima + Drone + Variados |
 | **Fase 4** | + GraphRAG | BGE-M3 | Qdrant + grafo Neo4j/NetworkX | Raciocínio relacional multi-hop |
 
 ---
@@ -358,10 +353,6 @@ Com base nas decisões desta sessão, o roadmap completo é atualizado com embed
 
 ---
 
-_Relatório gerado em 15/04/2026 — Sistema de IA para Análise de Solo — Eduardo Menezes_
-
----
-
 ## 10. Documento de Design Validado
 
 As decisões sobre arquitetura backend e os cinco pontos críticos foram consolidados em documento separado após sessão de brainstorming estruturado:
@@ -376,9 +367,9 @@ As decisões sobre arquitetura backend e os cinco pontos críticos foram consoli
 | 2 | **Gerenciamento de Prompts** | Templates Jinja2 em `prompts/` | Versionados, editáveis sem mexer no Python, suportam A/B testing |
 | 3 | **Chunking** | `RecursiveCharacterTextSplitter` (600t, overlap 80) | Padrão de mercado, respeita fronteiras de parágrafo/frase |
 | 4 | **Concorrência** | `run_in_executor` + Celery + Redis | `run_in_executor` para embeddings em query; Celery para ingestão/fine-tuning |
-| 5 | **Fallback LLM** | OpenAI com notificação no JSON | Transparente e auditável — `"modelo_usado"` indica a origem de cada resposta |
+| 5 | **Fallback LLM** | OpenAI, Gemini, Claude, entre outros com notificação no JSON | Transparente e auditável — `"modelo_usado"` indica a origem de cada resposta |
 
-### Questões Resolvidas (Brainstorming 15/04)
+### Questões Resolvidas
 
 | # | Questão | Decisão | Justificativa |
 |---|---|---|---|
@@ -395,7 +386,11 @@ As decisões sobre arquitetura backend e os cinco pontos críticos foram consoli
 | LLM Inferência | llama.cpp CPU (56 cores) | **$0** |
 | VectorDB (Qdrant) | Servidor faculdade | **$0** |
 | Fine-tuning | Kaggle Notebooks | **$0** |
-| Fallback LLM | OpenAI API (só em falhas) | Mínimo |
+| Fallback LLM | Modelos de IA disponíveis (só em falhas) | Mínimo |
 | **Total** | | **~$0** |
 
 > Especificações do servidor da faculdade: Intel Xeon E5-2680 v4 (56 cores), 125GB RAM, sem GPU. Gerenciado via Portainer + Docker Compose.
+
+---
+
+*Documento gerado em 15/04/2026 — TCC Análise de Prescrições Agronômicas com IA*
