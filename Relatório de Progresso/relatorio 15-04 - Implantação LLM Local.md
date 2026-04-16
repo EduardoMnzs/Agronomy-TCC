@@ -216,6 +216,24 @@ O serviço `llama.cpp` está operacional no servidor da faculdade com:
 - Tráfego roteado pelo Caddy (sem portas expostas diretamente)
 - Rede isolada em `ingress-network` (segurança)
 
+# Captura de tela do resultado no Portainer Swarm
+
+#### Êxito na instalação do modelo via container sidecar:
+
+![llama model installation](../assets/images/llama-model-installation-2026-04-15%20214428.png)
+
+O modelo foi instalado com sucesso, dentro do volume nomeado `llama_models`. Após a instalação, o container foi destruído.
+
+#### llama CPU Usage:
+![llama CPU Usage](../assets/images/llama-cpu-status-2026-04-15%20213711.png)
+
+O modelo está rodando com sucesso, com 24 threads sendo consumidos apenas quando o modelo está sendo utilizado.
+
+#### llama Memory Usage:
+![llama Memory Usage](../assets/images/llama-memory-status-2026-04-15%20214136.png)
+
+O modelo está rodando com sucesso, com 4.7GB de RAM alocados.
+
 ---
 
 ## 9. Lições Aprendidas e Padrões Estabelecidos
