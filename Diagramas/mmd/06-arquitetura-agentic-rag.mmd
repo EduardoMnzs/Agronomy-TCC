@@ -1,0 +1,83 @@
+flowchart TD
+    subgraph ING["CAMADA DE INGESTÃO E PERSISTÊNCIA (Offline)"]
+        direction TB
+        subgraph FONTES ["Fontes de Dados"]
+            direction LR
+            PDF["PDFs / Bulas"]
+            TABS["CSV / Zarc"]
+            GEOS["Shapefiles"]
+        end
+        CEL[["Celery Worker\n(Parsers + Validação ID)"]]
+        FONTES --> CEL
+        
+        subgraph DBS ["Bancos Especialistas"]
+            direction LR
+            QDR[("Qdrant DB\n(Vetorial)")]
+            PG[("PostgreSQL\n(Relacional)")]
+            GIS[("PostGIS\n(Espacial)")]
+        end
+        
+        CEL -->|"Semântico"| QDR
+        CEL -->|"Tabular"| PG
+        CEL -->|"Geográfico"| GIS
+    end
+
+    subgraph INF["CAMADA DE ORQUESTRAÇÃO E INFERÊNCIA"]
+        direction TB
+        USR["Usuário"] --> GRD["Guard\nClassifier"]
+        GRD -->|"domínio ok"| MAESTRO{{"LangGraph\n(Query Router)"}}
+        GRD -->|"fora do domínio"| REJ["Recusa Educada"]
+
+        MAESTRO -->|"Intenção Semântica"| B_QDR["Busca Qdrant"]
+        MAESTRO -->|"Intenção Matemática"| B_PG["Busca Postgres"]
+        MAESTRO -->|"Intenção Geográfica"| B_GIS["Busca PostGIS"]
+        
+        REC["Information Retrieval\n(Busca Híbrida)"]
+        B_QDR --> REC
+        B_PG --> REC
+        B_GIS --> REC
+        
+        REC --> PROMPT["Montagem do Prompt\n(+ Catálogo de Fonte)"]
+        PROMPT --> LLM["LLM Core\n(LLaMA 3)"]
+        LLM --> AVAL["Auto-Avaliação\n(CRAG)"]
+        AVAL --> FMT["Output Formatter\n(Pydantic)"]
+    end
+
+    subgraph OUT["SAÍDAS"]
+        direction LR
+        CHAT["Chat Natural\n(Citação Auditável)"]
+        JSON["JSON Estruturado"]
+    end
+
+    subgraph VAL["CAMADA DE VALIDAÇÃO E APRENDIZADO"]
+        direction TB
+        METRICS[["Benchmark IR\n(NDCG / MRR)"]]
+        GT[("Ground Truth\nDataset")] --> METRICS
+        
+        ENG["Engenheira Agrônoma"]
+        DS[("Dataset Store\n(Pares Validados)")]
+        FT["Fine-tuning\n(PEFT + LoRA)"]
+        LLM2["Modelo Especializado v2"]
+        
+        ENG -->|"Correto/Correção"| DS
+        DS -->|"N ≥ 200 pares"| FT
+        FT --> LLM2
+    end
+
+    ING --> INF
+    FMT --> CHAT
+    FMT --> JSON
+    
+    REC -.->|"Valida Retorno (TOP 3)"| METRICS
+    CHAT --> ENG
+    JSON --> ENG
+    LLM2 -.->|"Substitui Gradualmente"| LLM
+
+    style ING fill:#111b2b,stroke:#4a9eff,color:#e0f0ff
+    style INF fill:#112b11,stroke:#4aaa4a,color:#e0ffe0
+    style OUT fill:#2b1d11,stroke:#ffaa44,color:#fff0e0
+    style VAL fill:#2b112b,stroke:#aa44ff,color:#f0e0ff
+    style REJ fill:#5a1a1a,stroke:#ff4444,color:#ffe0e0
+    
+    style FONTES fill:#172438,stroke:#3b7ecc,color:#fff
+    style DBS fill:#172438,stroke:#3b7ecc,color:#fff

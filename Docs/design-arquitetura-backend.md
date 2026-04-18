@@ -32,8 +32,9 @@ Sistema RAG em Python/FastAPI seguindo Clean Architecture, com BGE-M3 como model
 - Orquestração RAG (F1–F2): `LangChain`
 - Orquestração Agentic (F3+): `LangGraph`
 - Embedding: `sentence-transformers` (BGE-M3)
-- VectorDB MVP: `ChromaDB`
-- VectorDB Produção: `Qdrant`
+- VectorDB Produção: `Qdrant` (arquivos não estruturados)
+- RelationalDB: `PostgreSQL` (Dados API/Zarc e Catálogo de Fontes OBRIGATÓRIO)
+- SpatialDB: `PostGIS` (Shapefiles)
 - LLM local: `Ollama` (LLaMA 3.1 8B)
 - ORM: `SQLAlchemy 2.0 async` + `Alembic`
 - Tasks: `Celery` + `Redis`
@@ -126,24 +127,29 @@ POST /v1/chat
     └─ 8. Output: Chat (SSE stream) + JSON estruturado
 ```
 
-### Ingestão de PDF (background)
+### Ingestão Multimodal e Híbrida (Background)
 
-```
+A ingestão opera com uma **Taxonomia de Restrição Absoluta**. Todo fluxo exige vínculo intrínseco a uma ID de um `Catálogo de Fontes` que resida no PostgreSQL, prevenindo alucinações.
+
+```text
 POST /v1/ingest
     │
-    ├─ Salva arquivo
+    ├─ Valida formato do arquivo
     ├─ Retorna task_id imediatamente (não bloqueia)
     │
-    └─ Celery Worker:
-        ├─ PyMuPDF → tenta extrair texto
-        ├─ len(texto) < threshold?
-        │     → SIM → PDF escaneado → EasyOCR (suporte PT-BR)
-        │     → NÃO → texto digital, usa direto
-        ├─ Extração de tabelas separadas (metadado tipo="tabela")
-        ├─ RecursiveCharacterTextSplitter (600t, overlap 80)
-        ├─ Metadados: fonte, página, bioma, cultura, tipo
-        ├─ BGE-M3 → dense + sparse vectors
-        └─ Upsert no Qdrant (payload com metadados)
+    └─ Celery Worker (Parsers Especializados):
+        ├─ Trilha Vetorial (PDFs/OCR):
+        │    ├─ RecursiveCharacterTextSplitter (600t, overlap 80)
+        │    ├─ Atribui metadados OBRIGATÓRIOS (id_fonte, página)
+        │    └─ Upsert no Qdrant
+        │
+        ├─ Trilha Relacional (CSV/APIs - ex: Zarc):
+        │    ├─ Validação de Schema Pydantic
+        │    └─ INSERT no PostgreSQL (isolado do Vectordb)
+        │
+        └─ Trilha Espacial (SHP):
+             ├─ GeoPandas extrai polígonos
+             └─ Salva no PostGIS atrelado à chave estrangeira da cultura
 
 GET /v1/ingest/{task_id} → status do processamento
 ```
@@ -209,11 +215,12 @@ O que é rastreado por query:
 
 | Camada | Ferramenta | O que testar |
 |---|---|---|
-| **Unitários** | `pytest` | Chunker, CRAG evaluator, schemas Pydantic |
-| **Integração** | `pytest-asyncio` | Pipeline RAG completo com VectorDB real |
+| **Unitários** | `pytest` | Chunker, Parser Zarc, CRAG evaluator, schemas Pydantic |
+| **Integração** | `pytest-asyncio` | Pipeline RAG completo com VectorDB e Banco Relacional reais |
 | **LLM/VectorDB mock** | `pytest-mock` | Testar fallback sem Ollama ou Qdrant |
+| **Avaliação IR** | Dataset `Ground Truth` | Ingestão testada medindo NDCG/MRR (a fonte EXATA precisa estar no TOP-3 do retorno do ORCA/Roteador) |
 | **Avaliação RAG** | `ragas` | Faithfulness, Answer Relevancy, Context Recall |
-| **Benchmark** | Manual (20-30 perguntas) | Validação com a engenheira agrônoma |
+| **Benchmark** | Validadores (Kpis) | Validação cega do modelo junto da engenheira agrônoma |
 
 ---
 

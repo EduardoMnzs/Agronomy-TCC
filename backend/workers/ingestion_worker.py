@@ -30,7 +30,7 @@ def process_pdf_task(self, file_path: str, user_metadata: dict = None):
         chunks = split_documents(documents)
         
         # Passo 3
-        self.update_state(state="PROGRESS", meta={"status": f"Acordando LLM local BGE-M3 e escrevendo no DB ({len(chunks)} chunks)..."})
+        self.update_state(state="PROGRESS", meta={"status": f"Gerando embeddings e persistindo no DB ({len(chunks)} chunks)..."})
         qdrant = QdrantAdapter() 
         qdrant.add_documents(chunks)
         

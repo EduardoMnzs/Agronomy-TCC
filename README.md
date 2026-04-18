@@ -26,16 +26,18 @@ A ideia central é transformar um vasto acervo de literatura técnica dispersa e
 
 ## Arquitetura (Resumo)
 
-O sistema é baseado na abordagem híbrida **RAG + Fine-tuning**:
+O sistema é baseado na abordagem de **Persistência Poliglota + Agentic RAG + Fine-tuning**:
 
-```
-PDFs → Extração → Chunking → Embeddings → VectorDB
+```text
+Arquivos / APIs / SHP → Ingestion Celery (Parsers com Metadados Estritos)
                                               ↓
-Pergunta → Guard Classifier → Retrieval → LLM → Auto-avaliação → Resposta
-                                                                      ↓
-                                              Engenheira valida → Dataset Store
-                                                                      ↓
-                                              N ≥ 200 pares → Fine-tuning → Modelo v2
+PDFs/OCR/Docs → Qdrant (Vetorial) | CSVs/APIs → PostgreSQL (Relacional) | Contornos → PostGIS (Espacial)
+                                              ↓
+Pergunta → Query Router (LangGraph) → Banco Especialista → LLM → Citação Garantida → Resposta
+                                                                       ↓
+                                               Engenheira valida → Dataset Store
+                                                                       ↓
+                                               N ≥ 200 pares → Fine-tuning → Modelo v2
 ```
 
 **Fases de evolução:**
@@ -100,6 +102,7 @@ TCC/
 | 03  | Fluxo de Query em Tempo Real     | [SVG](Diagramas/svg/03-fluxo-query.svg) \| [MMD](Diagramas/mmd/03-fluxo-query.mmd)                               |
 | 04  | Ciclo de Validação e Fine-tuning | [SVG](Diagramas/svg/04-ciclo-validacao-finetuning.svg) \| [MMD](Diagramas/mmd/04-ciclo-validacao-finetuning.mmd) |
 | 05  | Roadmap por Fases                | [SVG](Diagramas/svg/05-roadmap-fases.svg) \| [MMD](Diagramas/mmd/05-roadmap-fases.mmd)                           |
+| 06  | Arquitetura Agentic RAG          | [SVG](Diagramas/svg/06-arquitetura-agentic-rag.svg) \| [MMD](Diagramas/mmd/06-arquitetura-agentic-rag.mmd)       |
 
 > Para re-renderizar após editar um `.mmd`:
 >
@@ -117,10 +120,12 @@ TCC/
 - **LangChain** — pipeline de ingestão e chunking semântico
 - **LlamaIndex** — framework RAG alternativo
 
-### Embeddings e Busca Vetorial
+### Embeddings e Persistência Poliglota (Híbrida)
 
-- **multilingual-e5-large** — modelo de embeddings com suporte a PT-BR
-- **ChromaDB** (MVP) / **Weaviate** (cloud) — banco vetorial
+- **multilingual-e5-large** / **BGE-M3** — modelo de embeddings
+- **Qdrant** — banco vetorial (para textos não estruturados)
+- **PostgreSQL / SQLAlchemy** — banco relacional (para tabelas estruturadas, Zarc, Embrapa e Catálogo de rastreabilidade)
+- **PostGIS** — banco geoespacial (cartografia e SHP)
 
 ### Modelos de Linguagem (LLM)
 
