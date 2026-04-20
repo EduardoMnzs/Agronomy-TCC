@@ -1,27 +1,54 @@
 import os
 import shutil
-from fastapi import APIRouter, File, UploadFile, HTTPException
-from workers.ingestion_worker import process_pdf_task
+import uuid
+import logging
+from pathlib import Path
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from workers.ingestion_worker import process_document_task, inspect_document_task
 from celery.result import AsyncResult
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-TEMP_DIR = os.path.join(os.getcwd(), "temp_uploads")
-os.makedirs(TEMP_DIR, exist_ok=True)
+TEMP_DIR = Path(os.environ.get("TEMP_UPLOADS_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "temp_uploads")))
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_FILE_SIZE_MB = 100
 
 @router.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    id_fonte: Optional[int] = Form(None, description="Se deixado em branco, a IA atuará criando a base Curatorial PENDENTE")
+):
     """Recebe o arquivo e injeta na maquina de fila imediatamente."""
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Formato invalido, envie padrao .pdf")
-        
-    save_path = os.path.join(TEMP_DIR, file.filename)
-    
+    file_ext = os.path.splitext(file.filename or "")[1].lower()
+    if file_ext not in [".pdf", ".csv"]:
+        raise HTTPException(status_code=400, detail="Formato invalido. Utilize .pdf ou .csv")
+
+    safe_filename = f"{uuid.uuid4().hex}{file_ext}"
+    save_path = TEMP_DIR / safe_filename
+
+    if not str(save_path.resolve()).startswith(str(TEMP_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Caminho inválido.")
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Arquivo excede o limite de {MAX_FILE_SIZE_MB}MB.")
+
     with open(save_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(content)
         
-    # O comando mágico ".delay" aciona o Garçom Celery.
-    task = process_pdf_task.delay(save_path, user_metadata={"filename": file.filename})
+    save_path_str = str(save_path)
+
+    if not id_fonte or id_fonte <= 0:
+        task = inspect_document_task.delay(save_path_str)
+    else:
+        task = process_document_task.delay(
+            save_path_str,
+            user_metadata={"filename": file.filename, "id_fonte": id_fonte}
+        )
     
     return {
         "message": "Solicitacao de ingestao aceita!", 

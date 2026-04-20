@@ -28,8 +28,22 @@ class Settings(BaseSettings):
     FALLBACK_API_KEY: str | None = None
     FALLBACK_MODEL_NAME: str = "gpt-4o-mini"
     
+    # LlamaParse (fallback premium de extração PDF)
+    LLAMAPARSE_API_KEY: str | None = None
+
     # Message Broker e Celery Backbone
     REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # Banco de Dados Relacional (PostgreSQL)
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "agronomy"
+    POSTGRES_HOST: str = "127.0.0.1"
+    POSTGRES_PORT: int = 5433
+    
+    @property
+    def POSTGRES_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

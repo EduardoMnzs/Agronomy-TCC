@@ -10,6 +10,8 @@ langchain-qdrant
 sentence-transformers
 qdrant-client
 ollama
+langchain-ollama
+llama-parse
 sqlalchemy
 alembic
 celery
@@ -19,3 +21,8 @@ loguru
 jinja2
 pymupdf
 easyocr
+Pillow
+numpy
+asyncpg
+psycopg2-binary
+pandas

@@ -1,3 +1,5 @@
+import os
+import logging
 from typing import List, Dict, Any
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
@@ -7,15 +9,20 @@ from infrastructure.vectordb.base import BaseVectorDBAdapter
 from infrastructure.embeddings.bge_m3 import get_bge_m3_embeddings
 from config.settings import get_settings
 
+logger = logging.getLogger(__name__)
+
+_QDRANT_LOCAL_PATH = os.environ.get("QDRANT_LOCAL_PATH", ".qdrant_local")
+
 class QdrantAdapter(BaseVectorDBAdapter):
     def __init__(self, collection_name: str = "agronomy_docs"):
         self.settings = get_settings()
         self.collection_name = collection_name
         self.embeddings = get_bge_m3_embeddings()
-        
-        # Ambiente de desenvolvimento usa persistência local (memory/disk) sem precisar do Docker.
+
         if self.settings.ENVIRONMENT == "development":
-            self.client = QdrantClient(location=":memory:")
+            os.makedirs(_QDRANT_LOCAL_PATH, exist_ok=True)
+            logger.info(f"Qdrant dev mode: persistência local em '{_QDRANT_LOCAL_PATH}'")
+            self.client = QdrantClient(path=_QDRANT_LOCAL_PATH)
         else:
             self.client = QdrantClient(
                 url=f"http://{self.settings.QDRANT_HOST}:{self.settings.QDRANT_PORT}",
