@@ -1,0 +1,145 @@
+flowchart TD
+    %% ── ENTRADA ──────────────────────────────────────────────────────────
+    USER(["👤 Usuário / Agente Externo"])
+
+    subgraph API["🌐 FastAPI  —  Camada de Entrada"]
+        UPLOAD["POST /ingestion/upload\n• Valida extensão (.pdf / .csv)\n• Renomeia com UUID\n• Verifica path-traversal\n• Limite 100 MB"]
+    end
+
+    USER -->|"Upload do arquivo"| UPLOAD
+
+    %% ── ROTEAMENTO ────────────────────────────────────────────────────────
+    ROUTE{"id_fonte\nfornecido?"}
+    UPLOAD --> ROUTE
+
+    %% ── FLUXO A — Human-in-the-Loop ──────────────────────────────────────
+    subgraph HITL["🤖 Fluxo A — Human-in-the-Loop  (sem id_fonte)"]
+        direction TB
+        INSPECT["Celery Task\ninspect_document_task"]
+        AGENT["MetadataExtractorAgent\n• Amostra 1000 chars / 5 linhas\n• Extrai: título, órgão, categoria"]
+
+        subgraph LLMFALLBACK["Cascata de LLMs"]
+            direction LR
+            OLLAMA["☁ Ollama\n(primário)"]
+            LLAMACPP["⚡ llama.cpp\n(fallback)"]
+            DEFAULTS["📝 Defaults Seguros\n(último recurso)"]
+            OLLAMA -->|"timeout / erro"| LLAMACPP
+            LLAMACPP -->|"timeout / erro"| DEFAULTS
+        end
+
+        PENDENTE[("🗄 PostgreSQL\nCatalogoFontes\nstatus = PENDENTE\ncaminho_temporario = /tmp/...")]
+        CURADOR(["🧑‍💼 Curador\nHumano"])
+        APPROVE["PATCH /catalog/{id}/approve\n• Corrige título / órgão\n• status → APROVADO"]
+
+        INSPECT --> AGENT
+        AGENT --> LLMFALLBACK
+        LLMFALLBACK --> PENDENTE
+        PENDENTE -->|"Aguarda revisão\n(TTL 24h)"| CURADOR
+        CURADOR --> APPROVE
+    end
+
+    ROUTE -->|"❌ Sem ID"| INSPECT
+
+    %% ── FLUXO B — Ingestão Direta ────────────────────────────────────────
+    subgraph DIRECT["⚡ Fluxo B — Ingestão Direta  (com id_fonte)"]
+        direction TB
+        PROC_TASK["Celery Task\nprocess_document_task\n• Valida id_fonte obrigatório\n• Roteia por extensão"]
+        CSVROUTE{"Extensão?"}
+    end
+
+    ROUTE -->|"✅ Com ID"| PROC_TASK
+    APPROVE -->|"Despacha\nprocess_document_task"| PROC_TASK
+    PROC_TASK --> CSVROUTE
+
+    %% ── PARSERS ──────────────────────────────────────────────────────────
+    subgraph PDFCHAIN["📄 PDF — Chain of Responsibility"]
+        direction TB
+        LOCAL["Node 1 · LocalParserNode\n• PyMuPDF  →  texto + tabelas MD\n• EasyOCR  (páginas < 50 chars)\n💰 Custo: ZERO"]
+        VALIDATOR["Node 2 · LLMValidatorNode\n• Classifica: boa / parcial / falha\n• Retry automático (2×)\n• Injeta erro anterior no prompt\n💰 Custo: ZERO  (Ollama local)"]
+        LLAMAPARSE["Node 3 · LlamaParseNode\n• Lazy Loading (cliente sob demanda)\n• Acionado só se Validator falhar\n💰 Custo: API PREMIUM"]
+
+        LOCAL --> VALIDATOR
+        VALIDATOR -->|"boa / parcial"| OK_PDF(["✅ Documents\nextraction_node=local_boa\nou local_parcial"])
+        VALIDATOR -->|"falha após retries"| LLAMAPARSE
+        LLAMAPARSE --> FALLBACK_PDF(["✅ Documents\nextraction_node=llamaparse_fallback"])
+    end
+
+    subgraph CSVPARSER["📊 CSV — CSVParser  (atual)"]
+        direction TB
+        CSVREAD["pandas.read_csv\n• sep=None  (auto-detecta separador)\n• engine=python\n• on_bad_lines=warn\n• dtype=str"]
+        BATCH["Batch Insert 1000 linhas\nbulk_save_objects"]
+        CSVREAD --> BATCH
+    end
+
+    subgraph PARSERS_FUTURE["🔮 Parsers Futuros (Planned)"]
+        direction LR
+        ZARCPARSER["ZarcParser\n• API ZARC / MAPA\n• JSON → tabelas de risco\n→ PostgreSQL"]
+        BULAPARSER["BulaParser\n• PDFs de defensivos\n• Regex + LLM\n→ Qdrant"]
+        SHPPARSER["ShapefileParser ⭐\n• .SHP / GeoJSON\n• Contornos de talhões\n→ PostGIS"]
+    end
+
+    CSVROUTE -->|".pdf"| LOCAL
+    CSVROUTE -->|".csv"| CSVREAD
+    CSVROUTE -.->|".shp  (futuro)"| SHPPARSER
+    CSVROUTE -.->|"API Zarc  (futuro)"| ZARCPARSER
+    CSVROUTE -.->|"Bula PDF  (futuro)"| BULAPARSER
+
+    %% ── ENRIQUECIMENTO ───────────────────────────────────────────────────
+    subgraph ENRICH["🧩 Enriquecimento  (pipeline PDF)"]
+        CHUNKER["Chunker\nsplit_documents"]
+        ENRICHER["MetadataEnricher\nenrich_chunks\nid_fonte · cultura · tipo_solo"]
+        CHUNKER --> ENRICHER
+    end
+
+    OK_PDF --> CHUNKER
+    FALLBACK_PDF --> CHUNKER
+
+    %% ── PERSISTÊNCIA ─────────────────────────────────────────────────────
+    subgraph STORAGE["🗄 Persistência Poliglota"]
+        QDRANT[("🔵 Qdrant\nVector Store\n• PDFs / Bulas / Textos\n• Busca semântica")]
+        POSTGRES[("🟢 PostgreSQL\n• CatalogoFontes\n• csv_dados\n• Text-to-SQL")]
+        POSTGIS[("🟡 PostGIS ⭐\n• Geometrias SHP\n• Intersecção lat/long\n• Análise territorial")]
+    end
+
+    ENRICHER --> QDRANT
+    BATCH --> POSTGRES
+    APPROVE -->|"UPDATE status"| POSTGRES
+    SHPPARSER -.-> POSTGIS
+    ZARCPARSER -.-> POSTGRES
+    BULAPARSER -.-> QDRANT
+
+    %% ── QUERY ROUTING (futuro) ────────────────────────────────────────────
+    subgraph QUERY["🔍 Query Layer  (Agentic RAG)"]
+        ROUTER["LangGraph\nQuery Router ⭐\n• Classifica intenção\n• Seleciona banco alvo"]
+        ANSWER["LLM Response\n• Citação inline obrigatória\n[Fonte: arquivo.pdf, pág. X, §Y]"]
+        ROUTER --> QDRANT
+        ROUTER --> POSTGRES
+        ROUTER -.-> POSTGIS
+        QDRANT --> ANSWER
+        POSTGRES --> ANSWER
+        POSTGIS -.-> ANSWER
+    end
+
+    USER -->|"Pergunta"| ROUTER
+
+    %% ── LIMPEZA ──────────────────────────────────────────────────────────
+    CLEANUP["🧹 Cleanup Automático\nTTL 24h  (TEMP_FILE_TTL_SECONDS)\n_cleanup_expired_temp_files()"]
+    INSPECT -.->|"Executa no início\nde cada task"| CLEANUP
+    PROC_TASK -.->|"Remove após\nprocessamento"| CLEANUP
+
+    %% ── ESTILOS ──────────────────────────────────────────────────────────
+    classDef current fill:#1e3a5f,stroke:#4a9eff,color:#e0f0ff,stroke-width:2px
+    classDef future fill:#2d1b4e,stroke:#9b59b6,color:#e8d5f5,stroke-width:2px,stroke-dasharray:6 3
+    classDef db fill:#1a3a2a,stroke:#27ae60,color:#d5f5e3,stroke-width:2px
+    classDef dbfuture fill:#3a2d00,stroke:#f39c12,color:#fef9e7,stroke-width:2px,stroke-dasharray:6 3
+    classDef decision fill:#3a2020,stroke:#e74c3c,color:#fde8e8,stroke-width:2px
+    classDef person fill:#1a2a3a,stroke:#3498db,color:#d6eaf8,stroke-width:2px
+    classDef ok fill:#1a3a1a,stroke:#2ecc71,color:#d5f5e3,stroke-width:2px
+
+    class UPLOAD,INSPECT,AGENT,PROC_TASK,LOCAL,VALIDATOR,LLAMAPARSE,CSVREAD,BATCH,CHUNKER,ENRICHER,APPROVE,ROUTER,ANSWER,CLEANUP current
+    class ZARCPARSER,BULAPARSER,SHPPARSER,LLAMAPARSE future
+    class QDRANT,POSTGRES db
+    class POSTGIS dbfuture
+    class ROUTE,CSVROUTE decision
+    class USER,CURADOR person
+    class OK_PDF,FALLBACK_PDF ok
