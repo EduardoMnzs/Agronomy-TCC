@@ -21,7 +21,13 @@ class CSVParser(BaseParser):
         id_fonte = self.metadata["id_fonte"]
 
         try:
-            df = pd.read_csv(self.file_path, dtype=str)
+            df = pd.read_csv(
+                self.file_path,
+                dtype=str,
+                sep=None,
+                engine="python",
+                on_bad_lines="warn",
+            )
         except FileNotFoundError:
             raise FileNotFoundError(f"Arquivo CSV não encontrado: {self.file_path}")
         except Exception as e:
