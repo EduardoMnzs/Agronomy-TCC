@@ -66,6 +66,7 @@ test_db.py
 test_db_2.py
 test_async.py
 
-# Claude Code
-../.claude/settings.json
-../.claude/settings.local.json
+# Celery
+celerybeat-schedule
+celerybeat-schedule*
+
