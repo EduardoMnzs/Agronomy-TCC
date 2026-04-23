@@ -223,26 +223,28 @@ class LocalParserNode(_ExtractionNode):
 
 # Node 2 — LLM Validator (Ollama / any BaseChatModel)
 _SYSTEM_PROMPT = """\
-Você é um validador de qualidade de extração de texto de PDFs agronômicos.
-Avalie se o texto extraído é legível e útil para um sistema RAG.
+Você é um validador de qualidade de extração de PDFs agronômicos para um sistema RAG.
+Avalie texto corrido E integridade estrutural de tabelas numéricas.
 
 Schema de resposta (JSON puro, sem markdown):
 {
   "qualidade": "boa" | "parcial" | "falha",
   "texto_principal": "<primeiros 200 caracteres do texto extraído>",
   "tabelas": [],
-  "motivo_falha": "<obrigatório apenas se qualidade==falha>"
+  "motivo_falha": "<descrição se qualidade != boa, senão null>"
 }
 
-Critérios de qualidade — avalie APENAS o texto, não a ausência de tabelas:
-- "boa"    : texto legível, frases com sentido, conteúdo agronômico identificável.
-- "parcial": texto legível mas com trechos corrompidos, encoding quebrado ou palavras truncadas.
-- "falha"  : texto majoritariamente ilegível (ex: sequências de caracteres sem sentido,
-             encoding completamente corrompido, menos de 30 palavras no documento inteiro).
+Critérios:
+- "boa"    : texto legível E, se houver dados tabulares, os valores numéricos estão
+             claramente associados aos seus cabeçalhos/colunas (ex: "Ca 2,5 cmolc dm⁻³").
+- "parcial": texto legível MAS tabelas com valores numéricos embaralhados, colunas
+             colapsadas numa linha só, ou unidades separadas dos valores
+             (ex: "Baixo <0,02 <1 <0,4 Médio 0,02-1,5 1-2" sem cabeçalho associado).
+- "falha"  : texto majoritariamente ilegível ou encoding corrompido.
 
-IMPORTANTE:
-- Ausência de tabelas NÃO é motivo de "falha" nem de "parcial".
-- Se o texto faz sentido semântico, responda "boa".
+REGRAS CRÍTICAS:
+- Ausência de tabelas NÃO é "parcial" nem "falha" — documentos só-texto podem ser "boa".
+- Tabelas com números soltos sem relação clara de coluna/linha devem ser "parcial".
 - Responda SOMENTE o JSON, sem nenhum texto antes ou depois.
 """
 
@@ -278,12 +280,21 @@ class LLMValidatorNode(_ExtractionNode):
 
         result = self._validate_with_retry(raw_text)
 
+        has_tables = any(d.metadata.get("is_table") for d in local_docs)
+
         if result.qualidade == ExtractionQuality.FALHA:
             logger.warning(
-                f"[CUSTO: FALLBACK] LLM Validator sinalizou falha na extração local "
+                f"[CUSTO: FALLBACK] Qualidade='falha' "
                 f"(motivo: {result.motivo_falha}). Ativando LlamaParse."
             )
             raise LLMValidationFailed(result.motivo_falha or "qualidade==falha")
+
+        if result.qualidade == ExtractionQuality.PARCIAL and has_tables:
+            logger.warning(
+                f"[CUSTO: FALLBACK] Qualidade='parcial' com tabelas detectadas "
+                f"(motivo: {result.motivo_falha}). Ativando LlamaParse."
+            )
+            raise LLMValidationFailed(result.motivo_falha or "qualidade==parcial com tabelas")
 
         logger.info(f"[CUSTO: ZERO] Extração local validada com qualidade='{result.qualidade}'.")
 
